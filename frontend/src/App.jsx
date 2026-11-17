@@ -5,6 +5,8 @@ import { HomePage } from './pages/HomePage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
 import { ProfilePage } from './pages/ProfilePage.jsx';
+import { StudentsPage } from './pages/StudentsPage.jsx';
+import { CalendarPage } from './pages/CalendarPage.jsx';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -17,6 +19,10 @@ export default function App() {
         return <RegisterPage setCurrentPage={setCurrentPage} />;
       case 'profile':
         return <ProfilePage setCurrentPage={setCurrentPage} />;
+      case 'students':
+        return <StudentsPage setCurrentPage={setCurrentPage} />;
+      case 'calendar':
+        return <CalendarPage setCurrentPage={setCurrentPage} />;
       case 'home':
       default:
         return <HomePage setCurrentPage={setCurrentPage} />;

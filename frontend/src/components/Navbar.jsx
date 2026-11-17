@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 export const Navbar = ({ setCurrentPage }) => {
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   return (
     <nav style={{
@@ -20,11 +21,42 @@ export const Navbar = ({ setCurrentPage }) => {
       >
         <span>🇬🇧</span>
         <span>English Club</span>
+        {isAdmin && (
+          <span style={{ 
+            fontSize: '0.75rem', 
+            backgroundColor: '#fee2e2', 
+            color: '#b91c1c', 
+            padding: '0.15rem 0.5rem', 
+            borderRadius: '4px',
+            marginLeft: '0.25rem'
+          }}>
+            Admin
+          </span>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
         {user ? (
           <>
+            {isAdmin && (
+              <>
+                <button 
+                  className="btn" 
+                  style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
+                  onClick={() => setCurrentPage('students')}
+                >
+                  👥 Students
+                </button>
+                <button 
+                  className="btn" 
+                  style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
+                  onClick={() => setCurrentPage('calendar')}
+                >
+                  📅 Calendar
+                </button>
+              </>
+            )}
+
             <button 
               className="btn btn-blue" 
               onClick={() => setCurrentPage('profile')}
