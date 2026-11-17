@@ -7,16 +7,16 @@ export const register = async (req, res, next) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Все поля (имя, email, пароль) обязательны' });
+      return res.status(400).json({ message: 'All fields (name, email, password) are required.' });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ message: 'Пароль должен быть не менее 6 символов' });
+      return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
     }
 
     const existingUser = await UserModel.findByEmail(email);
     if (existingUser) {
-      return res.status(409).json({ message: 'Пользователь с таким email уже существует' });
+      return res.status(409).json({ message: 'An account with this email address already exists.' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -36,7 +36,7 @@ export const register = async (req, res, next) => {
     );
 
     res.status(201).json({
-      message: 'Регистрация прошла успешно',
+      message: 'Account created successfully.',
       user: {
         id: newUser.id,
         name: newUser.name,
@@ -55,17 +55,17 @@ export const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Введите email и пароль' });
+      return res.status(400).json({ message: 'Please enter your email and password.' });
     }
 
     const user = await UserModel.findByEmail(email);
     if (!user) {
-      return res.status(401).json({ message: 'Неверный email или пароль' });
+      return res.status(401).json({ message: 'Invalid email address or password.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Неверный email или пароль' });
+      return res.status(401).json({ message: 'Invalid email address or password.' });
     }
 
     const token = jwt.sign(
@@ -75,7 +75,7 @@ export const login = async (req, res, next) => {
     );
 
     res.status(200).json({
-      message: 'Успешный вход в систему',
+      message: 'Successfully logged in.',
       user: {
         id: user.id,
         name: user.name,
@@ -93,7 +93,7 @@ export const getMe = async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
+      return res.status(404).json({ message: 'User not found.' });
     }
     res.status(200).json({
       user: {
@@ -111,7 +111,7 @@ export const getMe = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    res.status(200).json({ message: 'Успешный выход из системы' });
+    res.status(200).json({ message: 'Signed out successfully.' });
   } catch (error) {
     next(error);
   }
