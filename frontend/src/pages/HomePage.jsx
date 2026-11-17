@@ -14,18 +14,31 @@ export const HomePage = ({ setCurrentPage }) => {
         <p style={{ maxWidth: '600px', margin: '0 auto 2rem', color: 'var(--text-muted)', fontSize: '1.15rem' }}>
           Level up your English fluency through interactive speaking clubs, certified native coaches, and a passionate community of learners.
         </p>
+
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
           {user ? (
-            <button className="btn" style={{ padding: '0.8rem 1.8rem', fontSize: '1.05rem' }} onClick={() => setCurrentPage('profile')}>
-              Go to Your Profile
+            <button 
+              className="btn btn-blue" 
+              style={{ padding: '0.8rem 1.8rem', fontSize: '1.05rem' }} 
+              onClick={() => setCurrentPage('profile')}
+            >
+              Go to Profile
             </button>
           ) : (
             <>
-              <button className="btn" style={{ padding: '0.8rem 1.8rem', fontSize: '1.05rem' }} onClick={() => setCurrentPage('register')}>
-                Get Started Free
+              <button 
+                className="btn btn-green" 
+                style={{ padding: '0.8rem 1.8rem', fontSize: '1.05rem' }} 
+                onClick={() => setCurrentPage('register')}
+              >
+                Join Club
               </button>
-              <button className="btn" style={{ background: '#f1f5f9', color: '#1e293b', border: '1px solid #cbd5e1' }} onClick={() => setCurrentPage('login')}>
-                Member Sign In
+              <button 
+                className="btn btn-blue" 
+                style={{ padding: '0.8rem 1.8rem', fontSize: '1.05rem' }} 
+                onClick={() => setCurrentPage('login')}
+              >
+                Login
               </button>
             </>
           )}

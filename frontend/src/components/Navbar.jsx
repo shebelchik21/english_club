@@ -11,7 +11,8 @@ export const Navbar = ({ setCurrentPage }) => {
       alignItems: 'center',
       padding: '1rem 2rem',
       backgroundColor: '#ffffff',
-      borderBottom: '1px solid #e2e8f0'
+      borderBottom: '1px solid #e2e8f0',
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
     }}>
       <div 
         style={{ fontWeight: 'bold', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }} 
@@ -20,22 +21,35 @@ export const Navbar = ({ setCurrentPage }) => {
         <span>🇬🇧</span>
         <span>English Club</span>
       </div>
+
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
         {user ? (
           <>
-            <button className="btn" style={{ background: 'transparent', color: '#1e293b' }} onClick={() => setCurrentPage('profile')}>
+            <button 
+              className="btn btn-blue" 
+              onClick={() => setCurrentPage('profile')}
+            >
               Profile ({user.name || 'Member'})
             </button>
-            <button className="btn" style={{ backgroundColor: '#ef4444' }} onClick={logout}>
+            <button 
+              className="btn btn-red" 
+              onClick={logout}
+            >
               Sign Out
             </button>
           </>
         ) : (
           <>
-            <button className="btn" style={{ background: 'transparent', color: '#1e293b' }} onClick={() => setCurrentPage('login')}>
-              Sign In
+            <button 
+              className="btn btn-blue" 
+              onClick={() => setCurrentPage('login')}
+            >
+              Login
             </button>
-            <button className="btn" onClick={() => setCurrentPage('register')}>
+            <button 
+              className="btn btn-green" 
+              onClick={() => setCurrentPage('register')}
+            >
               Join Club
             </button>
           </>

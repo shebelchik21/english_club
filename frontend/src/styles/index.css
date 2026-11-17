@@ -1,12 +1,15 @@
 :root {
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
+  --success: #16a34a;
+  --success-hover: #15803d;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
   --bg-color: #f8fafc;
   --card-bg: #ffffff;
   --text-main: #1e293b;
   --text-muted: #64748b;
   --border-color: #e2e8f0;
-  --danger: #ef4444;
 }
 
 * {
@@ -38,19 +41,47 @@ body {
 
 .btn {
   display: inline-block;
-  padding: 0.6rem 1.2rem;
-  font-weight: 500;
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
   border-radius: 6px;
   border: none;
   cursor: pointer;
   background-color: var(--primary);
   color: #fff;
   text-decoration: none;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.btn-green {
+  background-color: var(--success);
+  color: #ffffff;
+}
+
+.btn-green:hover {
+  background-color: var(--success-hover);
+}
+
+.btn-blue {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.btn-blue:hover {
   background-color: var(--primary-hover);
+}
+
+.btn-red {
+  background-color: var(--danger);
+  color: #ffffff;
+}
+
+.btn-red:hover {
+  background-color: var(--danger-hover);
 }
 
 .form-group {
