@@ -5,16 +5,16 @@ export const CalendarPage = ({ setCurrentPage }) => {
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  if (!user || user.role !== 'admin') {
+  if (!user) {
     return (
       <div className="container" style={{ maxWidth: '520px' }}>
         <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
-          <h2>Access Denied</h2>
+          <h2>Please Sign In</h2>
           <p style={{ margin: '1rem 0', color: 'var(--text-muted)' }}>
-            This page is only accessible to English Club administrators.
+            Sign in to view the English Club calendar and schedule.
           </p>
-          <button className="btn btn-blue" onClick={() => setCurrentPage('home')}>
-            Go to Home
+          <button className="btn btn-blue" onClick={() => setCurrentPage('login')}>
+            Sign In
           </button>
         </div>
       </div>

@@ -39,30 +39,30 @@ export const Navbar = ({ setCurrentPage }) => {
         {user ? (
           <>
             {isAdmin && (
-              <>
-                <button 
-                  className="btn" 
-                  style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
-                  onClick={() => setCurrentPage('students')}
-                >
-                  👥 Students
-                </button>
-                <button 
-                  className="btn" 
-                  style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
-                  onClick={() => setCurrentPage('calendar')}
-                >
-                  📅 Calendar
-                </button>
-              </>
+              <button 
+                className="btn" 
+                style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
+                onClick={() => setCurrentPage('students')}
+              >
+                👥 Students
+              </button>
             )}
+
+            <button 
+              className="btn" 
+              style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
+              onClick={() => setCurrentPage('calendar')}
+            >
+              📅 Calendar
+            </button>
 
             <button 
               className="btn btn-blue" 
               onClick={() => setCurrentPage('profile')}
             >
-              Profile ({user.name || 'Member'})
+              👤 Profile
             </button>
+
             <button 
               className="btn btn-red" 
               onClick={logout}
