@@ -26,7 +26,7 @@ app.use(async (req, res, next) => {
 app.use('/api', routes);
 
 // Database status & Health check endpoint
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
