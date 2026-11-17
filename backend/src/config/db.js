@@ -23,20 +23,36 @@ let schemaInitialized = false;
 
 export const initDB = async () => {
   if (schemaInitialized) return;
-  await sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      email VARCHAR(255) UNIQUE NOT NULL,
-      password_hash VARCHAR(255) NOT NULL,
-      role VARCHAR(50) DEFAULT 'student',
-      lessons_count INT DEFAULT 0,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS lessons_count INT DEFAULT 0;
-  `;
-  schemaInitialized = true;
-  console.log('✓ Database schema (users table) verified.');
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'student',
+        lessons_count INT DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS lessons_count INT DEFAULT 0`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        booking_date DATE NOT NULL,
+        time_slot VARCHAR(10) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_booking_slot UNIQUE (booking_date, time_slot)
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings (booking_date)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings (user_id)`;
+    schemaInitialized = true;
+    console.log('✓ Database schema (users & bookings tables) verified.');
+  } catch (err) {
+    console.error('Database schema initialization error:', err);
+  }
 };
 
 export const connectDB = async () => {
