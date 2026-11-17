@@ -10,7 +10,8 @@ const SLOTS = [
 export const CalendarPage = ({ setCurrentPage }) => {
   const { user, token, refreshUser } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -60,19 +61,29 @@ export const CalendarPage = ({ setCurrentPage }) => {
 
   const prevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
-    setSelectedDay(1);
-    setFeedback({ type: '', text: '' });
+    setSelectedDay(null);
+    setIsModalOpen(false);
   };
 
   const nextMonth = () => {
     setCurrentDate(new Date(year, month + 1, 1));
-    setSelectedDay(1);
-    setFeedback({ type: '', text: '' });
+    setSelectedDay(null);
+    setIsModalOpen(false);
   };
 
   const goToToday = () => {
     setCurrentDate(new Date());
     setSelectedDay(today.getDate());
+  };
+
+  const openDayModal = (day) => {
+    setSelectedDay(day);
+    setIsModalOpen(true);
+    setFeedback({ type: '', text: '' });
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
     setFeedback({ type: '', text: '' });
   };
 
@@ -106,7 +117,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
     setFeedback({ type: '', text: '' });
 
     try {
-      const res = await apiRequest('/bookings', 'POST', {
+      await apiRequest('/bookings', 'POST', {
         bookingDate: selectedDateStr,
         timeSlot
       }, token);
@@ -122,7 +133,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
   };
 
   const handleCancelSlot = async (bookingId, timeSlot) => {
-    if (!window.confirm(`Are you sure you want to cancel the session at ${timeSlot}? 1 lesson credit will be refunded.`)) {
+    if (!window.confirm(`Cancel session at ${timeSlot}? 1 lesson credit will be refunded.`)) {
       return;
     }
 
@@ -156,7 +167,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.2rem' }}>
               {isAdmin 
                 ? 'Admin Calendar: Monitor bookings and schedule lessons' 
-                : `Student Calendar: You have ${lessonsBalance} lesson ${lessonsBalance === 1 ? 'credit' : 'credits'} remaining`}
+                : `Student Calendar: You have ${lessonsBalance} ${lessonsBalance === 1 ? 'lesson' : 'lessons'} available`}
             </p>
           </div>
 
@@ -185,6 +196,23 @@ export const CalendarPage = ({ setCurrentPage }) => {
           </div>
         </div>
 
+        {/* Tip banner */}
+        <div style={{ 
+          backgroundColor: '#eff6ff', 
+          border: '1px solid #bfdbfe', 
+          borderRadius: '6px', 
+          padding: '0.65rem 1rem', 
+          fontSize: '0.9rem', 
+          color: '#1e40af', 
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <span>👉</span>
+          <span><strong>Tip:</strong> Click on any date below to open available 1-hour sessions (from 09:00 to 18:00) and book your time!</span>
+        </div>
+
         {/* Days of Week Header */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
           {daysOfWeek.map((dayName, idx) => (
@@ -195,10 +223,10 @@ export const CalendarPage = ({ setCurrentPage }) => {
         </div>
 
         {/* Calendar Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem' }}>
           {days.map((day, index) => {
             if (day === null) {
-              return <div key={`empty-${index}`} style={{ minHeight: '85px', background: '#fafafa', borderRadius: '8px' }} />;
+              return <div key={`empty-${index}`} style={{ minHeight: '90px', background: '#fafafa', borderRadius: '8px' }} />;
             }
 
             const isToday = (
@@ -218,13 +246,10 @@ export const CalendarPage = ({ setCurrentPage }) => {
             return (
               <div 
                 key={day}
-                onClick={() => {
-                  setSelectedDay(day);
-                  setFeedback({ type: '', text: '' });
-                }}
+                onClick={() => openDayModal(day)}
                 style={{
-                  minHeight: '85px',
-                  padding: '0.6rem',
+                  minHeight: '90px',
+                  padding: '0.65rem',
                   borderRadius: '8px',
                   border: isSelected 
                     ? '2px solid #2563eb' 
@@ -233,6 +258,8 @@ export const CalendarPage = ({ setCurrentPage }) => {
                     : '1px solid #e2e8f0',
                   backgroundColor: isSelected 
                     ? '#eff6ff' 
+                    : hasMyBooking
+                    ? '#f0fdf4'
                     : isToday 
                     ? '#f8fafc' 
                     : '#ffffff',
@@ -240,21 +267,30 @@ export const CalendarPage = ({ setCurrentPage }) => {
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   cursor: 'pointer',
-                  boxShadow: isSelected ? '0 0 0 2px rgba(37, 99, 235, 0.15)' : 'none',
-                  transition: 'all 0.15s ease'
+                  boxShadow: isSelected ? '0 0 0 2px rgba(37, 99, 235, 0.2)' : 'none',
+                  transition: 'all 0.15s ease',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) e.currentTarget.style.backgroundColor = '#f1f5f9';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.backgroundColor = hasMyBooking ? '#f0fdf4' : (isToday ? '#f8fafc' : '#ffffff');
+                  }
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ 
                     fontWeight: isSelected || isToday ? 700 : 500,
-                    fontSize: '1rem',
+                    fontSize: '1.05rem',
                     color: isSelected ? '#1d4ed8' : isToday ? '#2563eb' : '#1e293b'
                   }}>
                     {day}
                   </span>
                   {isToday && (
                     <span style={{ 
-                      fontSize: '0.65rem', 
+                      fontSize: '0.62rem', 
                       backgroundColor: '#2563eb', 
                       color: '#ffffff', 
                       padding: '0.1rem 0.35rem', 
@@ -267,25 +303,25 @@ export const CalendarPage = ({ setCurrentPage }) => {
                 </div>
 
                 {/* Dot / Indicator for booked lessons */}
-                <div style={{ marginTop: '0.4rem' }}>
+                <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                   {hasMyBooking && (
                     <div style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: '0.25rem',
+                      gap: '0.3rem',
                       fontSize: '0.72rem', 
                       color: '#15803d', 
-                      fontWeight: 600,
+                      fontWeight: 700,
                       backgroundColor: '#dcfce7',
-                      padding: '0.15rem 0.4rem',
+                      padding: '0.2rem 0.4rem',
                       borderRadius: '4px'
                     }}>
-                      <span style={{ width: '6px', height: '6px', backgroundColor: '#16a34a', borderRadius: '50%' }}></span>
-                      <span>Lesson</span>
+                      <span style={{ width: '7px', height: '7px', backgroundColor: '#16a34a', borderRadius: '50%' }}></span>
+                      <span>{myBookingsOnDay[0].timeSlot}</span>
                     </div>
                   )}
 
-                  {isAdmin && bookingsOnDay.length > 0 && !hasMyBooking && (
+                  {isAdmin && bookingsOnDay.length > 0 && (
                     <div style={{ 
                       fontSize: '0.72rem', 
                       color: '#4338ca', 
@@ -294,52 +330,83 @@ export const CalendarPage = ({ setCurrentPage }) => {
                       padding: '0.15rem 0.4rem',
                       borderRadius: '4px'
                     }}>
-                      ● {bookingsOnDay.length} {bookingsOnDay.length === 1 ? 'booked' : 'booked'}
+                      👥 {bookingsOnDay.length} {bookingsOnDay.length === 1 ? 'lesson' : 'lessons'}
                     </div>
+                  )}
+
+                  {!hasMyBooking && (!isAdmin || bookingsOnDay.length === 0) && (
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                      Click to view
+                    </span>
                   )}
                 </div>
               </div>
             );
           })}
         </div>
+      </div>
 
-        {/* Selected Date Session Slots */}
-        {selectedDay && (
-          <div style={{ 
-            borderTop: '2px solid var(--border-color)', 
-            paddingTop: '1.5rem',
-            marginTop: '1rem' 
+      {/* MODAL: Time Slot Selection Dialog */}
+      {isModalOpen && selectedDay && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="card" style={{ 
+            maxWidth: '680px', 
+            width: '100%', 
+            maxHeight: '90vh', 
+            overflowY: 'auto',
+            position: 'relative',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.2rem', color: '#0f172a' }}>
-                  Sessions for {monthNames[month]} {selectedDay}, {year}
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Hourly slots from 09:00 to 18:00
-                </p>
-              </div>
+            <button 
+              onClick={closeModal}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'transparent',
+                border: 'none',
+                fontSize: '1.4rem',
+                cursor: 'pointer',
+                color: 'var(--text-muted)'
+              }}
+            >
+              ✕
+            </button>
 
-              {!isAdmin && (
-                <div style={{ 
-                  backgroundColor: lessonsBalance > 0 ? '#dcfce7' : '#fee2e2', 
-                  color: lessonsBalance > 0 ? '#15803d' : '#b91c1c', 
-                  padding: '0.35rem 0.75rem', 
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '0.85rem'
-                }}>
-                  {lessonsBalance > 0 ? `${lessonsBalance} credits available` : '0 credits (Top-up required)'}
-                </div>
-              )}
+            {/* Modal Title */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '0.85rem', color: '#2563eb', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Select a 1-Hour Session
+              </div>
+              <h2 style={{ fontSize: '1.4rem', marginTop: '0.2rem', color: '#0f172a' }}>
+                {monthNames[month]} {selectedDay}, {year}
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                {isAdmin 
+                  ? 'Manage scheduled sessions or cancel bookings' 
+                  : `Your balance: ${lessonsBalance} ${lessonsBalance === 1 ? 'lesson' : 'lessons'} available`}
+              </p>
             </div>
 
             {feedback.text && (
               <div style={{
-                padding: '0.75rem',
+                padding: '0.8rem 1rem',
                 borderRadius: '6px',
-                marginBottom: '1rem',
-                fontSize: '0.9rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.95rem',
                 backgroundColor: feedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
                 color: feedback.type === 'success' ? '#15803d' : '#b91c1c',
                 border: `1px solid ${feedback.type === 'success' ? '#bbf7d0' : '#fecaca'}`
@@ -349,18 +416,20 @@ export const CalendarPage = ({ setCurrentPage }) => {
             )}
 
             {/* Time Slots Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
               {SLOTS.map((timeSlot) => {
                 const booking = dayBookings.find(b => b.timeSlot === timeSlot);
                 const isBooked = !!booking;
                 const isMine = booking?.isMine;
+                const startHour = parseInt(timeSlot.split(':')[0], 10);
+                const endHourStr = `${startHour + 1}:00`;
 
                 return (
                   <div 
                     key={timeSlot}
                     style={{
                       border: isMine 
-                        ? '1.5px solid #16a34a' 
+                        ? '2px solid #16a34a' 
                         : isBooked 
                         ? '1px solid #e2e8f0' 
                         : '1px solid #cbd5e1',
@@ -370,12 +439,13 @@ export const CalendarPage = ({ setCurrentPage }) => {
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
-                      gap: '0.5rem'
+                      gap: '0.5rem',
+                      boxShadow: isMine ? '0 2px 4px rgba(22, 163, 74, 0.1)' : 'none'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600, fontSize: '1rem' }}>
-                        ⏰ {timeSlot} - {parseInt(timeSlot.split(':')[0], 10) + 1}:00
+                      <span style={{ fontWeight: 600, fontSize: '1rem', color: '#0f172a' }}>
+                        ⏰ {timeSlot} - {endHourStr}
                       </span>
 
                       {isMine ? (
@@ -383,9 +453,9 @@ export const CalendarPage = ({ setCurrentPage }) => {
                           fontSize: '0.75rem', 
                           backgroundColor: '#dcfce7', 
                           color: '#15803d', 
-                          padding: '0.15rem 0.5rem', 
+                          padding: '0.2rem 0.55rem', 
                           borderRadius: '4px',
-                          fontWeight: 600
+                          fontWeight: 700
                         }}>
                           YOUR LESSON
                         </span>
@@ -394,41 +464,41 @@ export const CalendarPage = ({ setCurrentPage }) => {
                           fontSize: '0.75rem', 
                           backgroundColor: '#e2e8f0', 
                           color: '#475569', 
-                          padding: '0.15rem 0.5rem', 
+                          padding: '0.2rem 0.55rem', 
                           borderRadius: '4px',
-                          fontWeight: 500
+                          fontWeight: 600
                         }}>
-                          BOOKED
+                          OCCUPIED
                         </span>
                       ) : (
                         <span style={{ 
                           fontSize: '0.75rem', 
                           backgroundColor: '#eff6ff', 
                           color: '#2563eb', 
-                          padding: '0.15rem 0.5rem', 
+                          padding: '0.2rem 0.55rem', 
                           borderRadius: '4px',
-                          fontWeight: 500
+                          fontWeight: 600
                         }}>
                           AVAILABLE
                         </span>
                       )}
                     </div>
 
-                    {/* Booking Details / Actions */}
+                    {/* Action buttons */}
                     <div style={{ marginTop: '0.25rem' }}>
                       {isMine ? (
                         <button 
                           className="btn btn-red"
                           disabled={actionLoading}
-                          style={{ width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                          style={{ width: '100%', padding: '0.45rem', fontSize: '0.85rem' }}
                           onClick={() => handleCancelSlot(booking.id, timeSlot)}
                         >
-                          Cancel Booking (Refund)
+                          Cancel Booking (Refund 1 Credit)
                         </button>
                       ) : isBooked ? (
                         isAdmin ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            <div style={{ fontSize: '0.8rem', color: '#1e293b' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#0f172a' }}>
                               👤 <strong>{booking.studentName}</strong>
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -437,15 +507,15 @@ export const CalendarPage = ({ setCurrentPage }) => {
                             <button 
                               className="btn btn-red"
                               disabled={actionLoading}
-                              style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.8rem', marginTop: '0.25rem' }}
+                              style={{ width: '100%', padding: '0.4rem', fontSize: '0.8rem', marginTop: '0.25rem' }}
                               onClick={() => handleCancelSlot(booking.id, timeSlot)}
                             >
                               Cancel Session (Refund)
                             </button>
                           </div>
                         ) : (
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            Reserved by another student
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.3rem 0' }}>
+                            Reserved by another learner
                           </div>
                         )
                       ) : !isAdmin ? (
@@ -454,18 +524,18 @@ export const CalendarPage = ({ setCurrentPage }) => {
                           disabled={actionLoading || lessonsBalance < 1}
                           style={{ 
                             width: '100%', 
-                            padding: '0.4rem 0.6rem', 
+                            padding: '0.45rem', 
                             fontSize: '0.85rem',
                             opacity: lessonsBalance < 1 ? 0.6 : 1,
                             cursor: lessonsBalance < 1 ? 'not-allowed' : 'pointer'
                           }}
                           onClick={() => handleBookSlot(timeSlot)}
                         >
-                          {lessonsBalance < 1 ? 'No Lessons Left' : 'Book Session (1 Credit)'}
+                          {lessonsBalance < 1 ? 'No Credits Left' : 'Book Session (1 Credit)'}
                         </button>
                       ) : (
-                        <div style={{ fontSize: '0.8rem', color: '#16a34a', fontWeight: 500 }}>
-                          Open for student bookings
+                        <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500, padding: '0.3rem 0' }}>
+                          Available for students
                         </div>
                       )}
                     </div>
@@ -473,9 +543,20 @@ export const CalendarPage = ({ setCurrentPage }) => {
                 );
               })}
             </div>
+
+            {/* Modal Footer */}
+            <div style={{ textAlign: 'right', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+              <button 
+                className="btn" 
+                style={{ background: '#f1f5f9', color: '#1e293b', border: '1px solid #cbd5e1' }}
+                onClick={closeModal}
+              >
+                Close
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
