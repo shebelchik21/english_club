@@ -21,9 +21,6 @@ export const Navbar = ({ setCurrentPage }) => {
         <span>English Club</span>
       </div>
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-        <button className="btn" style={{ background: 'transparent', color: '#1e293b' }} onClick={() => setCurrentPage('home')}>
-          Home
-        </button>
         {user ? (
           <>
             <button className="btn" style={{ background: 'transparent', color: '#1e293b' }} onClick={() => setCurrentPage('profile')}>
