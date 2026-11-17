@@ -67,10 +67,7 @@ export const ProfilePage = ({ setCurrentPage }) => {
           </div>
         </div>
 
-        <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-          <button className="btn" onClick={() => setCurrentPage('home')}>
-            Back to Home
-          </button>
+        <div style={{ marginTop: '2rem', display: 'flex', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
           <button className="btn" style={{ backgroundColor: '#ef4444' }} onClick={logout}>
             Sign Out
           </button>
