@@ -41,7 +41,8 @@ export const register = async (req, res, next) => {
         id: newUser.id,
         name: newUser.name,
         email: newUser.email,
-        role: newUser.role
+        role: newUser.role,
+        lessonsCount: newUser.lessons_count || 0
       },
       token
     });
@@ -80,7 +81,8 @@ export const login = async (req, res, next) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        lessonsCount: user.lessons_count || 0
       },
       token
     });
@@ -101,6 +103,7 @@ export const getMe = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        lessonsCount: user.lessons_count || 0,
         createdAt: user.created_at
       }
     });

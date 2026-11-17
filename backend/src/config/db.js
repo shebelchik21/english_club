@@ -30,8 +30,10 @@ export const initDB = async () => {
       email VARCHAR(255) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
       role VARCHAR(50) DEFAULT 'student',
+      lessons_count INT DEFAULT 0,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS lessons_count INT DEFAULT 0;
   `;
   schemaInitialized = true;
   console.log('✓ Database schema (users table) verified.');
