@@ -196,22 +196,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
           </div>
         </div>
 
-        {/* Tip banner */}
-        <div style={{ 
-          backgroundColor: '#eff6ff', 
-          border: '1px solid #bfdbfe', 
-          borderRadius: '6px', 
-          padding: '0.65rem 1rem', 
-          fontSize: '0.9rem', 
-          color: '#1e40af', 
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
-          <span>👉</span>
-          <span><strong>Tip:</strong> Click on any date below to open available 1-hour sessions (from 09:00 to 18:00) and book your time!</span>
-        </div>
+
 
         {/* Days of Week Header */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
