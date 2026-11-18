@@ -334,11 +334,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
                     </div>
                   )}
 
-                  {!hasMyBooking && (!isAdmin || bookingsOnDay.length === 0) && (
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                      Click to view
-                    </span>
-                  )}
+
                 </div>
               </div>
             );
