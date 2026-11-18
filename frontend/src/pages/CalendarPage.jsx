@@ -489,7 +489,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
                           style={{ width: '100%', padding: '0.45rem', fontSize: '0.85rem' }}
                           onClick={() => handleCancelSlot(booking.id, timeSlot)}
                         >
-                          Cancel Booking (Refund 1 Credit)
+                          Cancel Booking
                         </button>
                       ) : isBooked ? (
                         isAdmin ? (
@@ -506,7 +506,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
                               style={{ width: '100%', padding: '0.4rem', fontSize: '0.8rem', marginTop: '0.25rem' }}
                               onClick={() => handleCancelSlot(booking.id, timeSlot)}
                             >
-                              Cancel Session (Refund)
+                              Cancel Session
                             </button>
                           </div>
                         ) : (
