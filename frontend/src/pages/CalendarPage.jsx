@@ -527,7 +527,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
                           }}
                           onClick={() => handleBookSlot(timeSlot)}
                         >
-                          {lessonsBalance < 1 ? 'No Credits Left' : 'Book Session (1 Credit)'}
+                          {lessonsBalance < 1 ? 'No Lessons Left' : 'Book Session'}
                         </button>
                       ) : (
                         <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500, padding: '0.3rem 0' }}>
