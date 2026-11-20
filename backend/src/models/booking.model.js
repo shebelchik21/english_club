@@ -35,6 +35,110 @@ export const BookingModel = {
     return rows;
   },
 
+  async findUpcoming(startDate, endDate) {
+    if (startDate && endDate) {
+      const rows = await sql`
+        SELECT 
+          b.id,
+          b.user_id,
+          to_char(b.booking_date, 'YYYY-MM-DD') as booking_date,
+          b.time_slot,
+          b.created_at,
+          u.name as user_name,
+          u.email as user_email
+        FROM bookings b
+        JOIN users u ON b.user_id = u.id
+        WHERE b.booking_date >= ${startDate}::date 
+          AND b.booking_date <= ${endDate}::date
+        ORDER BY b.booking_date ASC, b.time_slot ASC
+      `;
+      return rows;
+    } else if (startDate) {
+      const rows = await sql`
+        SELECT 
+          b.id,
+          b.user_id,
+          to_char(b.booking_date, 'YYYY-MM-DD') as booking_date,
+          b.time_slot,
+          b.created_at,
+          u.name as user_name,
+          u.email as user_email
+        FROM bookings b
+        JOIN users u ON b.user_id = u.id
+        WHERE b.booking_date >= ${startDate}::date 
+          AND b.booking_date <= (${startDate}::date + INTERVAL '6 days')
+        ORDER BY b.booking_date ASC, b.time_slot ASC
+      `;
+      return rows;
+    } else {
+      const rows = await sql`
+        SELECT 
+          b.id,
+          b.user_id,
+          to_char(b.booking_date, 'YYYY-MM-DD') as booking_date,
+          b.time_slot,
+          b.created_at,
+          u.name as user_name,
+          u.email as user_email
+        FROM bookings b
+        JOIN users u ON b.user_id = u.id
+        WHERE b.booking_date >= CURRENT_DATE 
+          AND b.booking_date <= (CURRENT_DATE + INTERVAL '6 days')
+        ORDER BY b.booking_date ASC, b.time_slot ASC
+      `;
+      return rows;
+    }
+  },
+
+  async findUpcomingByUser(userId, startDate, endDate) {
+    if (startDate && endDate) {
+      const rows = await sql`
+        SELECT 
+          b.id,
+          b.user_id,
+          to_char(b.booking_date, 'YYYY-MM-DD') as booking_date,
+          b.time_slot,
+          b.created_at
+        FROM bookings b
+        WHERE b.user_id = ${userId}
+          AND b.booking_date >= ${startDate}::date 
+          AND b.booking_date <= ${endDate}::date
+        ORDER BY b.booking_date ASC, b.time_slot ASC
+      `;
+      return rows;
+    } else if (startDate) {
+      const rows = await sql`
+        SELECT 
+          b.id,
+          b.user_id,
+          to_char(b.booking_date, 'YYYY-MM-DD') as booking_date,
+          b.time_slot,
+          b.created_at
+        FROM bookings b
+        WHERE b.user_id = ${userId}
+          AND b.booking_date >= ${startDate}::date 
+          AND b.booking_date <= (${startDate}::date + INTERVAL '6 days')
+        ORDER BY b.booking_date ASC, b.time_slot ASC
+      `;
+      return rows;
+    } else {
+      const rows = await sql`
+        SELECT 
+          b.id,
+          b.user_id,
+          to_char(b.booking_date, 'YYYY-MM-DD') as booking_date,
+          b.time_slot,
+          b.created_at
+        FROM bookings b
+        WHERE b.user_id = ${userId}
+          AND b.booking_date >= CURRENT_DATE 
+          AND b.booking_date <= (CURRENT_DATE + INTERVAL '6 days')
+        ORDER BY b.booking_date ASC, b.time_slot ASC
+      `;
+      return rows;
+    }
+  },
+
   async findById(id) {
     const rows = await sql`
       SELECT 

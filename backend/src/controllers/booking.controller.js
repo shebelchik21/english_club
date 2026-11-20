@@ -65,6 +65,40 @@ export const getMyBookings = async (req, res, next) => {
   }
 };
 
+export const getUpcomingBookings = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const isAdmin = req.user.role === 'admin';
+
+    if (isAdmin) {
+      const bookings = await BookingModel.findUpcoming(startDate, endDate);
+      const formatted = bookings.map(b => ({
+        id: b.id,
+        userId: b.user_id,
+        studentName: b.user_name,
+        studentEmail: b.user_email,
+        bookingDate: b.booking_date,
+        timeSlot: b.time_slot,
+        isMine: b.user_id === req.user.id,
+        isBooked: true
+      }));
+      return res.status(200).json({ bookings: formatted });
+    } else {
+      const bookings = await BookingModel.findUpcomingByUser(req.user.id, startDate, endDate);
+      const formatted = bookings.map(b => ({
+        id: b.id,
+        bookingDate: b.booking_date,
+        timeSlot: b.time_slot,
+        isMine: true,
+        isBooked: true
+      }));
+      return res.status(200).json({ bookings: formatted });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createBooking = async (req, res, next) => {
   try {
     const { bookingDate, timeSlot } = req.body;

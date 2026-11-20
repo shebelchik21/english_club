@@ -196,8 +196,6 @@ export const CalendarPage = ({ setCurrentPage }) => {
           </div>
         </div>
 
-
-
         {/* Days of Week Header */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
           {daysOfWeek.map((dayName, idx) => (
@@ -318,8 +316,6 @@ export const CalendarPage = ({ setCurrentPage }) => {
                       👥 {bookingsOnDay.length} {bookingsOnDay.length === 1 ? 'lesson' : 'lessons'}
                     </div>
                   )}
-
-
                 </div>
               </div>
             );

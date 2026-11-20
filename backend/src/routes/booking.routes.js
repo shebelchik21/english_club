@@ -2,12 +2,16 @@ import { Router } from 'express';
 import { 
   getMonthBookings, 
   getMyBookings, 
+  getUpcomingBookings,
   createBooking, 
   cancelBooking 
 } from '../controllers/booking.controller.js';
 import { authenticateToken } from '../middlewares/auth.middleware.js';
 
 const router = Router();
+
+// GET /api/bookings/upcoming
+router.get('/upcoming', authenticateToken, getUpcomingBookings);
 
 // GET /api/bookings?month=YYYY-MM
 router.get('/', authenticateToken, getMonthBookings);
