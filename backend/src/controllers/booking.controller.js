@@ -1,4 +1,5 @@
 import { BookingModel } from '../models/booking.model.js';
+import { BlockedSlotModel } from '../models/blockedSlot.model.js';
 import { UserModel } from '../models/user.model.js';
 import { sql } from '../config/db.js';
 
@@ -23,6 +24,7 @@ export const getMonthBookings = async (req, res, next) => {
     }
 
     const bookings = await BookingModel.findByMonth(year, monthNum);
+    const blockedSlots = await BlockedSlotModel.findByMonth(year, monthNum);
     const isAdmin = req.user.role === 'admin';
 
     // Format response based on user role
@@ -37,7 +39,8 @@ export const getMonthBookings = async (req, res, next) => {
           bookingDate: b.booking_date,
           timeSlot: b.time_slot,
           isMine: isMine,
-          isBooked: true
+          isBooked: true,
+          status: 'booked'
         };
       } else {
         return {
@@ -45,12 +48,25 @@ export const getMonthBookings = async (req, res, next) => {
           bookingDate: b.booking_date,
           timeSlot: b.time_slot,
           isMine: isMine,
-          isBooked: true
+          isBooked: true,
+          status: 'booked'
         };
       }
     });
 
-    res.status(200).json({ bookings: formatted });
+    const formattedBlocked = blockedSlots.map(b => ({
+      id: isAdmin ? b.id : null,
+      bookingDate: b.booking_date,
+      timeSlot: b.time_slot,
+      reason: isAdmin ? (b.reason || '') : '',
+      isBlocked: true,
+      status: 'blocked'
+    }));
+
+    res.status(200).json({ 
+      bookings: formatted,
+      blockedSlots: formattedBlocked
+    });
   } catch (error) {
     next(error);
   }
@@ -125,6 +141,14 @@ export const createBooking = async (req, res, next) => {
       });
     }
 
+    // Check if slot is blocked by admin
+    const isBlocked = await BlockedSlotModel.isSlotBlocked(bookingDate, timeSlot);
+    if (isBlocked) {
+      return res.status(409).json({ 
+        message: 'This time slot is blocked by the administrator and unavailable for booking.' 
+      });
+    }
+
     // Check if slot is already booked
     const isBooked = await BookingModel.isSlotBooked(bookingDate, timeSlot);
     if (isBooked) {
@@ -193,6 +217,92 @@ export const cancelBooking = async (req, res, next) => {
     res.status(200).json({
       message: 'Lesson booking cancelled successfully. 1 lesson has been refunded.',
       cancelledBookingId: bookingId
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const blockSlot = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: Admin only.' });
+    }
+
+    const { bookingDate, timeSlot, reason } = req.body;
+
+    if (!bookingDate || !timeSlot) {
+      return res.status(400).json({ message: 'Date and time slot are required.' });
+    }
+
+    if (!ALLOWED_SLOTS.includes(timeSlot)) {
+      return res.status(400).json({ message: 'Invalid time slot.' });
+    }
+
+    // Check if slot is already booked by a student
+    const isBooked = await BookingModel.isSlotBooked(bookingDate, timeSlot);
+    if (isBooked) {
+      return res.status(409).json({ 
+        message: 'This slot is already booked by a student. Please cancel the booking first before blocking.' 
+      });
+    }
+
+    // Check if already blocked
+    const isBlocked = await BlockedSlotModel.isSlotBlocked(bookingDate, timeSlot);
+    if (isBlocked) {
+      return res.status(409).json({ message: 'This slot is already blocked.' });
+    }
+
+    const blocked = await BlockedSlotModel.create({
+      bookingDate,
+      timeSlot,
+      reason: reason ? String(reason).trim() : null,
+      createdBy: req.user.id
+    });
+
+    res.status(201).json({
+      message: 'Session blocked successfully.',
+      blockedSlot: {
+        id: blocked.id,
+        bookingDate: blocked.booking_date,
+        timeSlot: blocked.time_slot,
+        reason: blocked.reason || '',
+        status: 'blocked'
+      }
+    });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'This slot is already blocked.' });
+    }
+    next(error);
+  }
+};
+
+export const unblockSlot = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: Admin only.' });
+    }
+
+    const id = req.params.id ? parseInt(req.params.id, 10) : null;
+    const { bookingDate, timeSlot } = req.body || {};
+
+    let deleted;
+    if (id) {
+      deleted = await BlockedSlotModel.delete(id);
+    } else if (bookingDate && timeSlot) {
+      deleted = await BlockedSlotModel.deleteBySlot(bookingDate, timeSlot);
+    } else {
+      return res.status(400).json({ message: 'Slot ID or (bookingDate and timeSlot) required to unblock.' });
+    }
+
+    if (!deleted) {
+      return res.status(404).json({ message: 'Blocked slot not found.' });
+    }
+
+    res.status(200).json({
+      message: 'Session unblocked successfully.',
+      unblockedSlot: deleted
     });
   } catch (error) {
     next(error);

@@ -13,6 +13,9 @@ export const CalendarPage = ({ setCurrentPage }) => {
   const [selectedDay, setSelectedDay] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
+  const [blockedSlots, setBlockedSlots] = useState([]);
+  const [blockingSlot, setBlockingSlot] = useState(null);
+  const [blockReason, setBlockReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', text: '' });
@@ -30,6 +33,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
       setLoading(true);
       const data = await apiRequest(`/bookings?month=${currentMonthStr}`, 'GET', null, token);
       setBookings(data.bookings || []);
+      setBlockedSlots(data.blockedSlots || []);
     } catch (err) {
       console.error('Failed to load bookings:', err);
     } finally {
@@ -40,8 +44,20 @@ export const CalendarPage = ({ setCurrentPage }) => {
   useEffect(() => {
     if (user && token) {
       fetchBookings();
+
+      const interval = setInterval(() => {
+        fetchBookings();
+      }, 5000);
+
+      const onFocus = () => fetchBookings();
+      window.addEventListener('focus', onFocus);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('focus', onFocus);
+      };
     }
-  }, [currentMonthStr, token]);
+  }, [currentMonthStr, token, user]);
 
   if (!user) {
     return (
@@ -85,6 +101,8 @@ export const CalendarPage = ({ setCurrentPage }) => {
   const closeModal = () => {
     setIsModalOpen(false);
     setFeedback({ type: '', text: '' });
+    setBlockingSlot(null);
+    setBlockReason('');
   };
 
   const monthNames = [
@@ -109,8 +127,9 @@ export const CalendarPage = ({ setCurrentPage }) => {
   // Selected date formatted as YYYY-MM-DD
   const selectedDateStr = selectedDay ? `${year}-${pad(month + 1)}-${pad(selectedDay)}` : null;
 
-  // Bookings for the currently selected day
+  // Bookings and blocked slots for the currently selected day
   const dayBookings = bookings.filter(b => b.bookingDate === selectedDateStr);
+  const dayBlockedSlots = blockedSlots.filter(b => b.bookingDate === selectedDateStr);
 
   const handleBookSlot = async (timeSlot) => {
     setActionLoading(true);
@@ -147,6 +166,51 @@ export const CalendarPage = ({ setCurrentPage }) => {
       if (refreshUser) await refreshUser();
     } catch (err) {
       setFeedback({ type: 'error', text: err.message || 'Failed to cancel session.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBlockSlot = async (timeSlot) => {
+    setActionLoading(true);
+    setFeedback({ type: '', text: '' });
+
+    try {
+      await apiRequest('/bookings/block', 'POST', {
+        bookingDate: selectedDateStr,
+        timeSlot,
+        reason: blockReason
+      }, token);
+
+      setFeedback({ type: 'success', text: `Session at ${timeSlot} blocked.` });
+      setBlockingSlot(null);
+      setBlockReason('');
+      await fetchBookings();
+    } catch (err) {
+      setFeedback({ type: 'error', text: err.message || 'Failed to block session.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnblockSlot = async (blockedSlotId, timeSlot) => {
+    setActionLoading(true);
+    setFeedback({ type: '', text: '' });
+
+    try {
+      if (blockedSlotId) {
+        await apiRequest(`/bookings/block/${blockedSlotId}`, 'DELETE', null, token);
+      } else {
+        await apiRequest('/bookings/unblock', 'POST', {
+          bookingDate: selectedDateStr,
+          timeSlot
+        }, token);
+      }
+
+      setFeedback({ type: 'success', text: `Session at ${timeSlot} unblocked and available now.` });
+      await fetchBookings();
+    } catch (err) {
+      setFeedback({ type: 'error', text: err.message || 'Failed to unblock session.' });
     } finally {
       setActionLoading(false);
     }
@@ -223,6 +287,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
 
             // Check bookings on this day
             const bookingsOnDay = bookings.filter(b => b.bookingDate === dateStr);
+            const blockedOnDay = blockedSlots.filter(b => b.bookingDate === dateStr);
             const myBookingsOnDay = bookingsOnDay.filter(b => b.isMine);
             const hasMyBooking = myBookingsOnDay.length > 0;
 
@@ -285,7 +350,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
                   )}
                 </div>
 
-                {/* Dot / Indicator for booked lessons */}
+                {/* Dot / Indicator for booked lessons & blocked sessions */}
                 <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                   {hasMyBooking && (
                     <div style={{ 
@@ -314,6 +379,19 @@ export const CalendarPage = ({ setCurrentPage }) => {
                       borderRadius: '4px'
                     }}>
                       👥 {bookingsOnDay.length} {bookingsOnDay.length === 1 ? 'lesson' : 'lessons'}
+                    </div>
+                  )}
+
+                  {isAdmin && blockedOnDay.length > 0 && (
+                    <div style={{ 
+                      fontSize: '0.72rem', 
+                      color: '#92400e', 
+                      fontWeight: 600,
+                      backgroundColor: '#fef3c7',
+                      padding: '0.15rem 0.4rem',
+                      borderRadius: '4px'
+                    }}>
+                      🔒 {blockedOnDay.length} blocked
                     </div>
                   )}
                 </div>
@@ -373,7 +451,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                 {isAdmin 
-                  ? 'Manage scheduled sessions or cancel bookings' 
+                  ? 'Manage scheduled sessions, block/unblock slots, or cancel bookings' 
                   : `Your balance: ${lessonsBalance} ${lessonsBalance === 1 ? 'lesson' : 'lessons'} available`}
               </p>
             </div>
@@ -396,23 +474,48 @@ export const CalendarPage = ({ setCurrentPage }) => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
               {SLOTS.map((timeSlot) => {
                 const booking = dayBookings.find(b => b.timeSlot === timeSlot);
+                const blockedSlot = dayBlockedSlots.find(b => b.timeSlot === timeSlot);
                 const isBooked = !!booking;
+                const isBlocked = !!blockedSlot;
                 const isMine = booking?.isMine;
                 const startHour = parseInt(timeSlot.split(':')[0], 10);
                 const endHourStr = `${startHour + 1}:00`;
+
+                // Calculate visual states
+                let borderColor = '#cbd5e1';
+                let bgColor = '#ffffff';
+                let badgeText = 'AVAILABLE';
+                let badgeBg = '#eff6ff';
+                let badgeColor = '#2563eb';
+
+                if (isMine) {
+                  borderColor = '#16a34a';
+                  bgColor = '#f0fdf4';
+                  badgeText = 'YOUR LESSON';
+                  badgeBg = '#dcfce7';
+                  badgeColor = '#15803d';
+                } else if (isBooked) {
+                  borderColor = '#cbd5e1';
+                  bgColor = '#f8fafc';
+                  badgeText = isAdmin ? 'BOOKED' : 'OCCUPIED';
+                  badgeBg = isAdmin ? '#fee2e2' : '#e2e8f0';
+                  badgeColor = isAdmin ? '#991b1b' : '#475569';
+                } else if (isBlocked) {
+                  borderColor = '#fcd34d';
+                  bgColor = '#fffbeb';
+                  badgeText = 'BLOCKED';
+                  badgeBg = '#fef3c7';
+                  badgeColor = '#92400e';
+                }
 
                 return (
                   <div 
                     key={timeSlot}
                     style={{
-                      border: isMine 
-                        ? '2px solid #16a34a' 
-                        : isBooked 
-                        ? '1px solid #e2e8f0' 
-                        : '1px solid #cbd5e1',
+                      border: `1px solid ${borderColor}`,
                       borderRadius: '8px',
                       padding: '0.85rem 1rem',
-                      backgroundColor: isMine ? '#f0fdf4' : isBooked ? '#f8fafc' : '#ffffff',
+                      backgroundColor: bgColor,
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
@@ -425,43 +528,19 @@ export const CalendarPage = ({ setCurrentPage }) => {
                         ⏰ {timeSlot} - {endHourStr}
                       </span>
 
-                      {isMine ? (
-                        <span style={{ 
-                          fontSize: '0.75rem', 
-                          backgroundColor: '#dcfce7', 
-                          color: '#15803d', 
-                          padding: '0.2rem 0.55rem', 
-                          borderRadius: '4px',
-                          fontWeight: 700
-                        }}>
-                          YOUR LESSON
-                        </span>
-                      ) : isBooked ? (
-                        <span style={{ 
-                          fontSize: '0.75rem', 
-                          backgroundColor: '#e2e8f0', 
-                          color: '#475569', 
-                          padding: '0.2rem 0.55rem', 
-                          borderRadius: '4px',
-                          fontWeight: 600
-                        }}>
-                          OCCUPIED
-                        </span>
-                      ) : (
-                        <span style={{ 
-                          fontSize: '0.75rem', 
-                          backgroundColor: '#eff6ff', 
-                          color: '#2563eb', 
-                          padding: '0.2rem 0.55rem', 
-                          borderRadius: '4px',
-                          fontWeight: 600
-                        }}>
-                          AVAILABLE
-                        </span>
-                      )}
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        backgroundColor: badgeBg, 
+                        color: badgeColor, 
+                        padding: '0.2rem 0.55rem', 
+                        borderRadius: '4px',
+                        fontWeight: 700
+                      }}>
+                        {badgeText}
+                      </span>
                     </div>
 
-                    {/* Action buttons */}
+                    {/* Action area */}
                     <div style={{ marginTop: '0.25rem' }}>
                       {isMine ? (
                         <button 
@@ -475,16 +554,18 @@ export const CalendarPage = ({ setCurrentPage }) => {
                       ) : isBooked ? (
                         isAdmin ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            <div style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                            <div style={{ fontSize: '0.88rem', color: '#0f172a' }}>
                               👤 <strong>{booking.studentName}</strong>
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              {booking.studentEmail}
-                            </div>
+                            {booking.studentEmail && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                {booking.studentEmail}
+                              </div>
+                            )}
                             <button 
                               className="btn btn-red"
                               disabled={actionLoading}
-                              style={{ width: '100%', padding: '0.4rem', fontSize: '0.8rem', marginTop: '0.25rem' }}
+                              style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem', marginTop: '0.25rem' }}
                               onClick={() => handleCancelSlot(booking.id, timeSlot)}
                             >
                               Cancel Session
@@ -495,7 +576,91 @@ export const CalendarPage = ({ setCurrentPage }) => {
                             Reserved by another learner
                           </div>
                         )
-                      ) : !isAdmin ? (
+                      ) : isBlocked ? (
+                        isAdmin ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            {blockedSlot.reason ? (
+                              <div style={{ fontSize: '0.82rem', color: '#92400e', backgroundColor: '#fef3c7', padding: '0.35rem 0.55rem', borderRadius: '4px' }}>
+                                📌 <strong>Reason:</strong> {blockedSlot.reason}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                Blocked by administrator
+                              </div>
+                            )}
+                            <button 
+                              className="btn btn-blue"
+                              disabled={actionLoading}
+                              style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem', marginTop: '0.25rem' }}
+                              onClick={() => handleUnblockSlot(blockedSlot.id, timeSlot)}
+                            >
+                              Unblock Session
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.3rem 0' }}>
+                            Unavailable
+                          </div>
+                        )
+                      ) : isAdmin ? (
+                        blockingSlot === timeSlot ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
+                            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                              Block reason (optional):
+                            </label>
+                            <input 
+                              type="text"
+                              placeholder="e.g. External student, personal matters"
+                              value={blockReason}
+                              onChange={(e) => setBlockReason(e.target.value)}
+                              style={{ 
+                                fontSize: '0.85rem', 
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                border: '1px solid #94a3b8'
+                              }}
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleBlockSlot(timeSlot);
+                              }}
+                            />
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                              <button 
+                                className="btn btn-red"
+                                disabled={actionLoading}
+                                style={{ flex: 1, padding: '0.4rem', fontSize: '0.82rem' }}
+                                onClick={() => handleBlockSlot(timeSlot)}
+                              >
+                                {actionLoading ? 'Blocking...' : 'Confirm Block'}
+                              </button>
+                              <button 
+                                type="button"
+                                className="btn"
+                                style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem', background: '#f1f5f9' }}
+                                onClick={() => { setBlockingSlot(null); setBlockReason(''); }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button 
+                            className="btn"
+                            disabled={actionLoading}
+                            style={{ 
+                              width: '100%', 
+                              padding: '0.45rem', 
+                              fontSize: '0.85rem', 
+                              background: '#f8fafc', 
+                              border: '1px solid #cbd5e1', 
+                              color: '#0f172a' 
+                            }}
+                            onClick={() => { setBlockingSlot(timeSlot); setBlockReason(''); }}
+                          >
+                            🔒 Block Session
+                          </button>
+                        )
+                      ) : (
                         <button 
                           className="btn btn-green"
                           disabled={actionLoading || lessonsBalance < 1}
@@ -510,10 +675,6 @@ export const CalendarPage = ({ setCurrentPage }) => {
                         >
                           {lessonsBalance < 1 ? 'No Lessons Left' : 'Book Session'}
                         </button>
-                      ) : (
-                        <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500, padding: '0.3rem 0' }}>
-                          Available for students
-                        </div>
                       )}
                     </div>
                   </div>

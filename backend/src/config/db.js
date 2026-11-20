@@ -48,8 +48,20 @@ export const initDB = async () => {
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings (booking_date)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings (user_id)`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS blocked_slots (
+        id SERIAL PRIMARY KEY,
+        booking_date DATE NOT NULL,
+        time_slot VARCHAR(10) NOT NULL,
+        reason VARCHAR(255),
+        created_by INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_blocked_slot UNIQUE (booking_date, time_slot)
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_blocked_slots_date ON blocked_slots (booking_date)`;
     schemaInitialized = true;
-    console.log('✓ Database schema (users & bookings tables) verified.');
+    console.log('✓ Database schema (users, bookings & blocked_slots tables) verified.');
   } catch (err) {
     console.error('Database schema initialization error:', err);
   }
