@@ -2,6 +2,7 @@ import { BookingModel } from '../models/booking.model.js';
 import { BlockedSlotModel } from '../models/blockedSlot.model.js';
 import { UserModel } from '../models/user.model.js';
 import { sql } from '../config/db.js';
+import { hasSessionStarted, isSessionCompleted } from '../utils/timezone.js';
 
 const ALLOWED_SLOTS = [
   '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -75,7 +76,8 @@ export const getMonthBookings = async (req, res, next) => {
 export const getMyBookings = async (req, res, next) => {
   try {
     const bookings = await BookingModel.findByUser(req.user.id);
-    res.status(200).json({ bookings });
+    const completedCount = bookings.filter(b => isSessionCompleted(b.booking_date, b.time_slot)).length;
+    res.status(200).json({ bookings, completedCount });
   } catch (error) {
     next(error);
   }
@@ -126,6 +128,13 @@ export const createBooking = async (req, res, next) => {
     if (!ALLOWED_SLOTS.includes(timeSlot)) {
       return res.status(400).json({ 
         message: `Invalid time slot. Allowed slots are between 09:00 and 18:00.` 
+      });
+    }
+
+    // Check if session has already started or is in the past
+    if (hasSessionStarted(bookingDate, timeSlot)) {
+      return res.status(400).json({ 
+        message: 'Cannot book a past session or a session that has already started.' 
       });
     }
 
@@ -204,6 +213,13 @@ export const cancelBooking = async (req, res, next) => {
       return res.status(403).json({ message: 'Access denied: You can only cancel your own bookings.' });
     }
 
+    // Check if session has already started or is in the past
+    if (hasSessionStarted(booking.booking_date, booking.time_slot)) {
+      return res.status(400).json({ 
+        message: 'Cannot cancel a past session or a session that has already started.' 
+      });
+    }
+
     // Delete booking
     await BookingModel.delete(bookingId);
 
@@ -237,6 +253,13 @@ export const blockSlot = async (req, res, next) => {
 
     if (!ALLOWED_SLOTS.includes(timeSlot)) {
       return res.status(400).json({ message: 'Invalid time slot.' });
+    }
+
+    // Check if session has already started or is in the past
+    if (hasSessionStarted(bookingDate, timeSlot)) {
+      return res.status(400).json({ 
+        message: 'Cannot block a past session or a session that has already started.' 
+      });
     }
 
     // Check if slot is already booked by a student
@@ -286,6 +309,20 @@ export const unblockSlot = async (req, res, next) => {
 
     const id = req.params.id ? parseInt(req.params.id, 10) : null;
     const { bookingDate, timeSlot } = req.body || {};
+
+    let blockedSlot;
+    if (id) {
+      blockedSlot = await BlockedSlotModel.findById(id);
+    }
+
+    const targetDate = blockedSlot?.booking_date || bookingDate;
+    const targetSlot = blockedSlot?.time_slot || timeSlot;
+
+    if (targetDate && targetSlot && hasSessionStarted(targetDate, targetSlot)) {
+      return res.status(400).json({ 
+        message: 'Cannot unblock a past session or a session that has already started.' 
+      });
+    }
 
     let deleted;
     if (id) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiRequest } from '../services/api.js';
+import { getClubCurrentDateTime, hasSessionStarted } from '../utils/timezone.js';
 
 const SLOTS = [
   '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -21,7 +22,8 @@ export const CalendarPage = ({ setCurrentPage }) => {
   const [feedback, setFeedback] = useState({ type: '', text: '' });
 
   const isAdmin = user?.role === 'admin';
-  const today = new Date();
+  const clubNow = getClubCurrentDateTime();
+  const todayStr = clubNow.currentDateStr;
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -88,8 +90,8 @@ export const CalendarPage = ({ setCurrentPage }) => {
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
-    setSelectedDay(today.getDate());
+    setCurrentDate(new Date(clubNow.year, clubNow.month - 1, clubNow.day));
+    setSelectedDay(clubNow.day);
   };
 
   const openDayModal = (day) => {
@@ -132,6 +134,11 @@ export const CalendarPage = ({ setCurrentPage }) => {
   const dayBlockedSlots = blockedSlots.filter(b => b.bookingDate === selectedDateStr);
 
   const handleBookSlot = async (timeSlot) => {
+    if (hasSessionStarted(selectedDateStr, timeSlot)) {
+      setFeedback({ type: 'error', text: 'Cannot book a past session or a session that has already started.' });
+      return;
+    }
+
     setActionLoading(true);
     setFeedback({ type: '', text: '' });
 
@@ -152,6 +159,11 @@ export const CalendarPage = ({ setCurrentPage }) => {
   };
 
   const handleCancelSlot = async (bookingId, timeSlot) => {
+    if (hasSessionStarted(selectedDateStr, timeSlot)) {
+      setFeedback({ type: 'error', text: 'Cannot cancel a past session or a session that has already started.' });
+      return;
+    }
+
     if (!window.confirm(`Cancel session at ${timeSlot}? 1 lesson credit will be refunded.`)) {
       return;
     }
@@ -172,6 +184,11 @@ export const CalendarPage = ({ setCurrentPage }) => {
   };
 
   const handleBlockSlot = async (timeSlot) => {
+    if (hasSessionStarted(selectedDateStr, timeSlot)) {
+      setFeedback({ type: 'error', text: 'Cannot block a past session or a session that has already started.' });
+      return;
+    }
+
     setActionLoading(true);
     setFeedback({ type: '', text: '' });
 
@@ -284,6 +301,8 @@ export const CalendarPage = ({ setCurrentPage }) => {
 
             const isSelected = selectedDay === day;
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+            const isPastDay = dateStr < todayStr;
+            const isDayDisabled = !isAdmin && isPastDay;
 
             // Check bookings on this day
             const bookingsOnDay = bookings.filter(b => b.bookingDate === dateStr);
@@ -294,7 +313,8 @@ export const CalendarPage = ({ setCurrentPage }) => {
             return (
               <div 
                 key={day}
-                onClick={() => openDayModal(day)}
+                onClick={isDayDisabled ? undefined : () => openDayModal(day)}
+                title={isDayDisabled ? 'Past dates are unavailable for booking' : undefined}
                 style={{
                   minHeight: '90px',
                   padding: '0.65rem',
@@ -303,27 +323,32 @@ export const CalendarPage = ({ setCurrentPage }) => {
                     ? '2px solid #2563eb' 
                     : isToday 
                     ? '2px solid #93c5fd' 
+                    : isDayDisabled
+                    ? '1px dashed #cbd5e1'
                     : '1px solid #e2e8f0',
-                  backgroundColor: isSelected 
+                  backgroundColor: isDayDisabled
+                    ? '#f8fafc'
+                    : isSelected 
                     ? '#eff6ff' 
                     : hasMyBooking
                     ? '#f0fdf4'
                     : isToday 
                     ? '#f8fafc' 
                     : '#ffffff',
+                  opacity: isDayDisabled ? 0.6 : 1,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  cursor: 'pointer',
+                  cursor: isDayDisabled ? 'not-allowed' : 'pointer',
                   boxShadow: isSelected ? '0 0 0 2px rgba(37, 99, 235, 0.2)' : 'none',
                   transition: 'all 0.15s ease',
                   userSelect: 'none'
                 }}
                 onMouseEnter={(e) => {
-                  if (!isSelected) e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  if (!isSelected && !isDayDisabled) e.currentTarget.style.backgroundColor = '#f1f5f9';
                 }}
                 onMouseLeave={(e) => {
-                  if (!isSelected) {
+                  if (!isSelected && !isDayDisabled) {
                     e.currentTarget.style.backgroundColor = hasMyBooking ? '#f0fdf4' : (isToday ? '#f8fafc' : '#ffffff');
                   }
                 }}
@@ -332,7 +357,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
                   <span style={{ 
                     fontWeight: isSelected || isToday ? 700 : 500,
                     fontSize: '1.05rem',
-                    color: isSelected ? '#1d4ed8' : isToday ? '#2563eb' : '#1e293b'
+                    color: isDayDisabled ? '#94a3b8' : isSelected ? '#1d4ed8' : isToday ? '#2563eb' : '#1e293b'
                   }}>
                     {day}
                   </span>
@@ -478,6 +503,7 @@ export const CalendarPage = ({ setCurrentPage }) => {
                 const isBooked = !!booking;
                 const isBlocked = !!blockedSlot;
                 const isMine = booking?.isMine;
+                const isStarted = hasSessionStarted(selectedDateStr, timeSlot);
                 const startHour = parseInt(timeSlot.split(':')[0], 10);
                 const endHourStr = `${startHour + 1}:00`;
 
@@ -489,23 +515,53 @@ export const CalendarPage = ({ setCurrentPage }) => {
                 let badgeColor = '#2563eb';
 
                 if (isMine) {
-                  borderColor = '#16a34a';
-                  bgColor = '#f0fdf4';
-                  badgeText = 'YOUR LESSON';
-                  badgeBg = '#dcfce7';
-                  badgeColor = '#15803d';
+                  if (isStarted) {
+                    borderColor = '#cbd5e1';
+                    bgColor = '#f8fafc';
+                    badgeText = 'PASSED LESSON';
+                    badgeBg = '#e2e8f0';
+                    badgeColor = '#475569';
+                  } else {
+                    borderColor = '#16a34a';
+                    bgColor = '#f0fdf4';
+                    badgeText = 'YOUR LESSON';
+                    badgeBg = '#dcfce7';
+                    badgeColor = '#15803d';
+                  }
                 } else if (isBooked) {
-                  borderColor = '#cbd5e1';
-                  bgColor = '#f8fafc';
-                  badgeText = isAdmin ? 'BOOKED' : 'OCCUPIED';
-                  badgeBg = isAdmin ? '#fee2e2' : '#e2e8f0';
-                  badgeColor = isAdmin ? '#991b1b' : '#475569';
+                  if (isStarted) {
+                    borderColor = '#e2e8f0';
+                    bgColor = '#f8fafc';
+                    badgeText = isAdmin ? 'COMPLETED' : 'OCCUPIED';
+                    badgeBg = '#e2e8f0';
+                    badgeColor = '#475569';
+                  } else {
+                    borderColor = '#cbd5e1';
+                    bgColor = '#f8fafc';
+                    badgeText = isAdmin ? 'BOOKED' : 'OCCUPIED';
+                    badgeBg = isAdmin ? '#fee2e2' : '#e2e8f0';
+                    badgeColor = isAdmin ? '#991b1b' : '#475569';
+                  }
                 } else if (isBlocked) {
-                  borderColor = '#fcd34d';
-                  bgColor = '#fffbeb';
-                  badgeText = 'BLOCKED';
-                  badgeBg = '#fef3c7';
-                  badgeColor = '#92400e';
+                  if (isStarted) {
+                    borderColor = '#e2e8f0';
+                    bgColor = '#f8fafc';
+                    badgeText = 'BLOCKED';
+                    badgeBg = '#e2e8f0';
+                    badgeColor = '#64748b';
+                  } else {
+                    borderColor = '#fcd34d';
+                    bgColor = '#fffbeb';
+                    badgeText = 'BLOCKED';
+                    badgeBg = '#fef3c7';
+                    badgeColor = '#92400e';
+                  }
+                } else if (isStarted) {
+                  borderColor = '#e2e8f0';
+                  bgColor = '#f8fafc';
+                  badgeText = 'PASSED';
+                  badgeBg = '#f1f5f9';
+                  badgeColor = '#94a3b8';
                 }
 
                 return (
@@ -520,11 +576,11 @@ export const CalendarPage = ({ setCurrentPage }) => {
                       flexDirection: 'column',
                       justifyContent: 'space-between',
                       gap: '0.5rem',
-                      boxShadow: isMine ? '0 2px 4px rgba(22, 163, 74, 0.1)' : 'none'
+                      boxShadow: isMine && !isStarted ? '0 2px 4px rgba(22, 163, 74, 0.1)' : 'none'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600, fontSize: '1rem', color: '#0f172a' }}>
+                      <span style={{ fontWeight: 600, fontSize: '1rem', color: isStarted ? '#64748b' : '#0f172a' }}>
                         ⏰ {timeSlot} - {endHourStr}
                       </span>
 
@@ -543,14 +599,28 @@ export const CalendarPage = ({ setCurrentPage }) => {
                     {/* Action area */}
                     <div style={{ marginTop: '0.25rem' }}>
                       {isMine ? (
-                        <button 
-                          className="btn btn-red"
-                          disabled={actionLoading}
-                          style={{ width: '100%', padding: '0.45rem', fontSize: '0.85rem' }}
-                          onClick={() => handleCancelSlot(booking.id, timeSlot)}
-                        >
-                          Cancel Booking
-                        </button>
+                        isStarted ? (
+                          <div style={{ 
+                            fontSize: '0.82rem', 
+                            color: '#64748b', 
+                            fontStyle: 'italic', 
+                            backgroundColor: '#f1f5f9',
+                            padding: '0.35rem 0.6rem',
+                            borderRadius: '4px',
+                            textAlign: 'center'
+                          }}>
+                            ✓ Completed / Session has passed
+                          </div>
+                        ) : (
+                          <button 
+                            className="btn btn-red"
+                            disabled={actionLoading}
+                            style={{ width: '100%', padding: '0.45rem', fontSize: '0.85rem' }}
+                            onClick={() => handleCancelSlot(booking.id, timeSlot)}
+                          >
+                            Cancel Booking
+                          </button>
+                        )
                       ) : isBooked ? (
                         isAdmin ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -562,14 +632,29 @@ export const CalendarPage = ({ setCurrentPage }) => {
                                 {booking.studentEmail}
                               </div>
                             )}
-                            <button 
-                              className="btn btn-red"
-                              disabled={actionLoading}
-                              style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem', marginTop: '0.25rem' }}
-                              onClick={() => handleCancelSlot(booking.id, timeSlot)}
-                            >
-                              Cancel Session
-                            </button>
+                            {isStarted ? (
+                              <div style={{ 
+                                fontSize: '0.82rem', 
+                                color: '#64748b', 
+                                fontStyle: 'italic',
+                                backgroundColor: '#f1f5f9',
+                                padding: '0.35rem 0.6rem',
+                                borderRadius: '4px',
+                                marginTop: '0.2rem',
+                                textAlign: 'center'
+                              }}>
+                                ✓ Session has passed
+                              </div>
+                            ) : (
+                              <button 
+                                className="btn btn-red"
+                                disabled={actionLoading}
+                                style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem', marginTop: '0.25rem' }}
+                                onClick={() => handleCancelSlot(booking.id, timeSlot)}
+                              >
+                                Cancel Session
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.3rem 0' }}>
@@ -588,20 +673,47 @@ export const CalendarPage = ({ setCurrentPage }) => {
                                 Blocked by administrator
                               </div>
                             )}
-                            <button 
-                              className="btn btn-blue"
-                              disabled={actionLoading}
-                              style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem', marginTop: '0.25rem' }}
-                              onClick={() => handleUnblockSlot(blockedSlot.id, timeSlot)}
-                            >
-                              Unblock Session
-                            </button>
+                            {isStarted ? (
+                              <div style={{ 
+                                fontSize: '0.82rem', 
+                                color: '#64748b', 
+                                fontStyle: 'italic',
+                                backgroundColor: '#f1f5f9',
+                                padding: '0.35rem 0.6rem',
+                                borderRadius: '4px',
+                                marginTop: '0.2rem',
+                                textAlign: 'center'
+                              }}>
+                                🔒 Blocked (Session has passed)
+                              </div>
+                            ) : (
+                              <button 
+                                className="btn btn-blue"
+                                disabled={actionLoading}
+                                style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem', marginTop: '0.25rem' }}
+                                onClick={() => handleUnblockSlot(blockedSlot.id, timeSlot)}
+                              >
+                                Unblock Session
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.3rem 0' }}>
                             Unavailable
                           </div>
                         )
+                      ) : isStarted ? (
+                        <div style={{ 
+                          fontSize: '0.82rem', 
+                          color: 'var(--text-muted)', 
+                          fontStyle: 'italic', 
+                          padding: '0.4rem 0',
+                          textAlign: 'center',
+                          backgroundColor: '#f8fafc',
+                          borderRadius: '4px'
+                        }}>
+                          Time slot has already passed
+                        </div>
                       ) : isAdmin ? (
                         blockingSlot === timeSlot ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>

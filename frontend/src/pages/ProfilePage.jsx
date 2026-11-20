@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiRequest } from '../services/api.js';
+import { isSessionCompleted, hasSessionStarted } from '../utils/timezone.js';
 
 export const ProfilePage = ({ setCurrentPage }) => {
   const { user, token, logout, refreshUser } = useAuth();
@@ -54,6 +55,11 @@ export const ProfilePage = ({ setCurrentPage }) => {
   }, [token, user?.role]);
 
   const handleCancelBooking = async (bookingId, date, slot, studentName) => {
+    if (hasSessionStarted(date, slot)) {
+      alert('Cannot cancel a past session or a session that has already started.');
+      return;
+    }
+
     const confirmMsg = isAdmin
       ? `Are you sure you want to cancel the lesson on ${date} at ${slot}${studentName ? ` for ${studentName}` : ''}? 1 lesson credit will be refunded to the student.`
       : `Are you sure you want to cancel the lesson on ${date} at ${slot}? 1 lesson credit will be refunded.`;
@@ -92,6 +98,10 @@ export const ProfilePage = ({ setCurrentPage }) => {
 
   const lessonsCount = user.lessonsCount !== undefined ? user.lessonsCount : 0;
 
+  const completedCount = lessons.filter(b => 
+    isSessionCompleted(b.bookingDate || b.booking_date, b.timeSlot || b.time_slot)
+  ).length;
+
   const sortedLessons = [...lessons].sort((a, b) => {
     const dateA = a.bookingDate || a.booking_date || '';
     const dateB = b.bookingDate || b.booking_date || '';
@@ -107,19 +117,6 @@ export const ProfilePage = ({ setCurrentPage }) => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Member Profile</h2>
-          {user.role !== 'admin' && (
-            <span style={{ 
-              backgroundColor: '#dbeafe', 
-              color: '#1e40af', 
-              padding: '0.25rem 0.75rem', 
-              borderRadius: '9999px', 
-              fontSize: '0.85rem', 
-              fontWeight: 600,
-              textTransform: 'uppercase'
-            }}>
-              {user.role || 'Student'}
-            </span>
-          )}
         </div>
 
         {/* Lessons Balance Highlight Card */}
@@ -132,7 +129,7 @@ export const ProfilePage = ({ setCurrentPage }) => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '1.5rem'
+            marginBottom: '1rem'
           }}>
             <div>
               <div style={{ fontSize: '0.85rem', color: '#1e40af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -140,11 +137,6 @@ export const ProfilePage = ({ setCurrentPage }) => {
               </div>
               <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e3a8a', marginTop: '0.25rem' }}>
                 {lessonsCount} {lessonsCount === 1 ? 'lesson' : 'lessons'}
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#3b82f6', marginTop: '0.25rem' }}>
-                {lessonsCount > 0 
-                  ? 'Ready for your next speaking club or session!' 
-                  : 'Contact the administrator to top up your lessons.'}
               </div>
             </div>
             <div>
@@ -155,6 +147,32 @@ export const ProfilePage = ({ setCurrentPage }) => {
               >
                 📅 Schedule Lesson
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Completed Lessons Highlight Card */}
+        {user.role !== 'admin' && (
+          <div style={{
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+            border: '1px solid #bbf7d0',
+            borderRadius: '10px',
+            padding: '1.25rem 1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.85rem', color: '#166534', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Completed Lessons
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#14532d', marginTop: '0.25rem' }}>
+                {completedCount} {completedCount === 1 ? 'lesson' : 'lessons'}
+              </div>
+            </div>
+            <div style={{ fontSize: '2rem' }}>
+              🎓
             </div>
           </div>
         )}
@@ -184,7 +202,7 @@ export const ProfilePage = ({ setCurrentPage }) => {
               Club Membership Status
             </div>
             <div style={{ fontSize: '1rem', color: '#16a34a', fontWeight: 500, marginTop: '0.25rem' }}>
-              ● {user.role === 'admin' ? 'Admin' : 'Active Member'}
+              ● {user.role === 'admin' ? 'Admin' : 'Student'}
             </div>
           </div>
         </div>
@@ -325,14 +343,27 @@ export const ProfilePage = ({ setCurrentPage }) => {
                       </div>
                     </div>
 
-                    <button 
-                      className="btn btn-red"
-                      disabled={cancellingId === b.id}
-                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
-                      onClick={() => handleCancelBooking(b.id, dateStr, slotStr, studentName)}
-                    >
-                      {cancellingId === b.id ? 'Cancelling...' : 'Cancel'}
-                    </button>
+                    {hasSessionStarted(dateStr, slotStr) ? (
+                      <span style={{ 
+                        fontSize: '0.78rem', 
+                        color: '#64748b', 
+                        fontWeight: 600, 
+                        backgroundColor: '#f1f5f9', 
+                        padding: '0.35rem 0.65rem', 
+                        borderRadius: '4px' 
+                      }}>
+                        {isAdmin ? 'Completed' : 'Passed'}
+                      </span>
+                    ) : (
+                      <button 
+                        className="btn btn-red"
+                        disabled={cancellingId === b.id}
+                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+                        onClick={() => handleCancelBooking(b.id, dateStr, slotStr, studentName)}
+                      >
+                        {cancellingId === b.id ? 'Cancelling...' : 'Cancel'}
+                      </button>
+                    )}
                   </div>
                 );
               })}
