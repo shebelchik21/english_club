@@ -31,9 +31,10 @@ export const UserModel = {
   },
 
   async updateLessons(id, lessonsCount) {
+    const safeCount = Math.max(0, parseInt(lessonsCount, 10) || 0);
     const rows = await sql`
       UPDATE users 
-      SET lessons_count = ${lessonsCount}
+      SET lessons_count = ${safeCount}
       WHERE id = ${id}
       RETURNING id, name, email, role, lessons_count, created_at
     `;

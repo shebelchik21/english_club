@@ -48,15 +48,20 @@ export const StudentsPage = ({ setCurrentPage }) => {
     );
   }
 
-  const handleAdjustLessons = async (studentId, delta = null, exactCount = null) => {
+  const handleAdjustLessons = async (studentId, delta) => {
+    const deltaNum = parseInt(delta, 10);
+    if (isNaN(deltaNum) || deltaNum === 0) {
+      setModalFeedback({ type: 'error', text: 'Please enter a valid non-zero integer adjustment.' });
+      return;
+    }
+
     setUpdating(true);
     setModalFeedback({ type: '', text: '' });
 
     try {
-      const payload = delta !== null ? { delta } : { count: exactCount };
-      const response = await apiRequest(`/admin/students/${studentId}/lessons`, 'PATCH', payload, token);
+      const response = await apiRequest(`/admin/students/${studentId}/lessons`, 'PATCH', { delta: deltaNum }, token);
 
-      const updatedCount = response.student.lessonsCount;
+      const updatedCount = Math.max(0, response.student.lessonsCount);
 
       // Update state in modal
       setSelectedStudent(prev => prev ? { ...prev, lessons_count: updatedCount } : null);
@@ -64,7 +69,8 @@ export const StudentsPage = ({ setCurrentPage }) => {
       // Update state in table list
       setStudents(prev => prev.map(s => s.id === studentId ? { ...s, lessons_count: updatedCount } : s));
 
-      setModalFeedback({ type: 'success', text: `Lessons balance updated to ${updatedCount}!` });
+      const signStr = deltaNum > 0 ? `+${deltaNum}` : `${deltaNum}`;
+      setModalFeedback({ type: 'success', text: `Lessons balance updated (${signStr}). New balance: ${updatedCount}!` });
       setCustomCount('');
     } catch (err) {
       setModalFeedback({ type: 'error', text: err.message || 'Failed to update lessons balance.' });
@@ -289,69 +295,76 @@ export const StudentsPage = ({ setCurrentPage }) => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
                 <button 
                   className="btn" 
-                  disabled={updating || (selectedStudent.lessons_count || 0) < 1}
-                  style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}
+                  disabled={updating}
+                  style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontWeight: 600 }}
+                  onClick={() => handleAdjustLessons(selectedStudent.id, -3)}
+                >
+                  −3
+                </button>
+                <button 
+                  className="btn" 
+                  disabled={updating}
+                  style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontWeight: 600 }}
                   onClick={() => handleAdjustLessons(selectedStudent.id, -1)}
                 >
-                  − 1
+                  −1
                 </button>
                 <button 
                   className="btn" 
                   disabled={updating}
-                  style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }}
-                  onClick={() => handleAdjustLessons(selectedStudent.id, +1)}
+                  style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontWeight: 600 }}
+                  onClick={() => handleAdjustLessons(selectedStudent.id, 1)}
                 >
-                  + 1
+                  +1
                 </button>
                 <button 
                   className="btn" 
                   disabled={updating}
-                  style={{ backgroundColor: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe' }}
-                  onClick={() => handleAdjustLessons(selectedStudent.id, +5)}
+                  style={{ backgroundColor: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', fontWeight: 600 }}
+                  onClick={() => handleAdjustLessons(selectedStudent.id, 3)}
                 >
-                  + 5
-                </button>
-                <button 
-                  className="btn" 
-                  disabled={updating}
-                  style={{ backgroundColor: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe' }}
-                  onClick={() => handleAdjustLessons(selectedStudent.id, +10)}
-                >
-                  + 10
+                  +3
                 </button>
               </div>
             </div>
 
-            {/* Set Exact Amount */}
+            {/* Manual Balance Adjustment */}
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                Set Exact Lessons Count:
+                Manual Balance Adjustment:
               </div>
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (customCount !== '' && !isNaN(customCount)) {
-                    handleAdjustLessons(selectedStudent.id, null, parseInt(customCount, 10));
+                  if (customCount !== '' && customCount !== '+' && customCount !== '-') {
+                    handleAdjustLessons(selectedStudent.id, customCount);
                   }
                 }}
                 style={{ display: 'flex', gap: '0.5rem' }}
               >
                 <input 
-                  type="number"
-                  min="0"
-                  placeholder="e.g. 8"
+                  type="text"
+                  placeholder="e.g. +5 or -3"
                   value={customCount}
-                  onChange={(e) => setCustomCount(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || val === '+' || val === '-' || /^[+-]?\d*$/.test(val)) {
+                      setCustomCount(val);
+                    }
+                  }}
                   style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid var(--border-color)', borderRadius: '6px' }}
                 />
                 <button 
                   type="submit" 
                   className="btn btn-blue"
-                  disabled={updating || customCount === ''}
+                  disabled={updating || !customCount || customCount === '+' || customCount === '-'}
                 >
-                  Set Count
+                  Apply
                 </button>
               </form>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                Enter a positive number (e.g. +5) to add lessons, or negative (e.g. -3) to deduct. Balance will never be negative.
+              </div>
             </div>
 
             <div style={{ textAlign: 'right', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>

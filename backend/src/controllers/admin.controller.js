@@ -25,15 +25,27 @@ export const updateStudentLessons = async (req, res, next) => {
       return res.status(404).json({ message: 'Student not found.' });
     }
 
-    let newLessonsCount = student.lessons_count || 0;
+    let currentLessons = Math.max(0, student.lessons_count || 0);
+    let newLessonsCount;
 
-    if (count !== undefined) {
-      newLessonsCount = Math.max(0, parseInt(count, 10) || 0);
-    } else if (delta !== undefined) {
-      newLessonsCount = Math.max(0, newLessonsCount + (parseInt(delta, 10) || 0));
+    if (delta !== undefined) {
+      const deltaNum = parseInt(delta, 10);
+      if (isNaN(deltaNum)) {
+        return res.status(400).json({ message: 'Invalid delta value. Must be an integer.' });
+      }
+      newLessonsCount = Math.max(0, currentLessons + deltaNum);
+    } else if (count !== undefined) {
+      const countNum = parseInt(count, 10);
+      if (isNaN(countNum)) {
+        return res.status(400).json({ message: 'Invalid count value. Must be an integer.' });
+      }
+      newLessonsCount = Math.max(0, countNum);
     } else {
-      return res.status(400).json({ message: 'Please provide either count or delta.' });
+      return res.status(400).json({ message: 'Please provide either delta or count.' });
     }
+
+    // Strict non-negative guarantee: balance cannot be negative
+    newLessonsCount = Math.max(0, newLessonsCount);
 
     const updated = await UserModel.updateLessons(studentId, newLessonsCount);
 
@@ -44,7 +56,7 @@ export const updateStudentLessons = async (req, res, next) => {
         name: updated.name,
         email: updated.email,
         role: updated.role,
-        lessonsCount: updated.lessons_count
+        lessonsCount: Math.max(0, updated.lessons_count || 0)
       }
     });
   } catch (error) {
