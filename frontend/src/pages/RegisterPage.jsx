@@ -111,7 +111,7 @@ export const RegisterPage = ({ setCurrentPage }) => {
             style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline' }}
             onClick={() => setCurrentPage('login')}
           >
-            Sign in
+            Login
           </span>
         </p>
       </div>

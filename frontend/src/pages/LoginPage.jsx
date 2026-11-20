@@ -27,7 +27,7 @@ export const LoginPage = ({ setCurrentPage }) => {
       <div className="card">
         <h2 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Welcome Back</h2>
         <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
-          Sign in to access your English Club account
+          Log in to your English Club account
         </p>
 
         {error && (
@@ -83,7 +83,7 @@ export const LoginPage = ({ setCurrentPage }) => {
             style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline' }}
             onClick={() => setCurrentPage('register')}
           >
-            Create account
+            Join Club
           </span>
         </p>
       </div>

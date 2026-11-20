@@ -68,53 +68,57 @@ export const ProfilePage = ({ setCurrentPage }) => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Member Profile</h2>
-          <span style={{ 
-            backgroundColor: user.role === 'admin' ? '#fee2e2' : '#dbeafe', 
-            color: user.role === 'admin' ? '#b91c1c' : '#1e40af', 
-            padding: '0.25rem 0.75rem', 
-            borderRadius: '9999px', 
-            fontSize: '0.85rem', 
-            fontWeight: 600,
-            textTransform: 'uppercase'
-          }}>
-            {user.role || 'Student'}
-          </span>
+          {user.role !== 'admin' && (
+            <span style={{ 
+              backgroundColor: '#dbeafe', 
+              color: '#1e40af', 
+              padding: '0.25rem 0.75rem', 
+              borderRadius: '9999px', 
+              fontSize: '0.85rem', 
+              fontWeight: 600,
+              textTransform: 'uppercase'
+            }}>
+              {user.role || 'Student'}
+            </span>
+          )}
         </div>
 
         {/* Lessons Balance Highlight Card */}
-        <div style={{
-          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-          border: '1px solid #bfdbfe',
-          borderRadius: '10px',
-          padding: '1.25rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1.5rem'
-        }}>
-          <div>
-            <div style={{ fontSize: '0.85rem', color: '#1e40af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lesson Balance
+        {user.role !== 'admin' && (
+          <div style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+            border: '1px solid #bfdbfe',
+            borderRadius: '10px',
+            padding: '1.25rem 1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.85rem', color: '#1e40af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Lesson Balance
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e3a8a', marginTop: '0.25rem' }}>
+                {lessonsCount} {lessonsCount === 1 ? 'lesson' : 'lessons'}
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#3b82f6', marginTop: '0.25rem' }}>
+                {lessonsCount > 0 
+                  ? 'Ready for your next speaking club or session!' 
+                  : 'Contact the administrator to top up your lessons.'}
+              </div>
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e3a8a', marginTop: '0.25rem' }}>
-              {lessonsCount} {lessonsCount === 1 ? 'lesson' : 'lessons'}
-            </div>
-            <div style={{ fontSize: '0.85rem', color: '#3b82f6', marginTop: '0.25rem' }}>
-              {lessonsCount > 0 
-                ? 'Ready for your next speaking club or session!' 
-                : 'Contact the administrator to top up your lessons.'}
+            <div>
+              <button 
+                className="btn btn-green" 
+                style={{ fontSize: '0.9rem', padding: '0.6rem 1.1rem' }}
+                onClick={() => setCurrentPage('calendar')}
+              >
+                📅 Schedule Lesson
+              </button>
             </div>
           </div>
-          <div>
-            <button 
-              className="btn btn-green" 
-              style={{ fontSize: '0.9rem', padding: '0.6rem 1.1rem' }}
-              onClick={() => setCurrentPage('calendar')}
-            >
-              📅 Schedule Lesson
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* User Info Details */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
@@ -141,7 +145,7 @@ export const ProfilePage = ({ setCurrentPage }) => {
               Club Membership Status
             </div>
             <div style={{ fontSize: '1rem', color: '#16a34a', fontWeight: 500, marginTop: '0.25rem' }}>
-              ● Active Member
+              ● {user.role === 'admin' ? 'Admin' : 'Active Member'}
             </div>
           </div>
         </div>
