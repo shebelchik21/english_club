@@ -57,7 +57,7 @@ export const RegisterPage = ({ setCurrentPage }) => {
             marginBottom: '1rem',
             fontSize: '0.9rem' 
           }}>
-            Account created successfully! Redirecting to sign in...
+            Account created successfully! Redirecting to login...
           </div>
         )}
 

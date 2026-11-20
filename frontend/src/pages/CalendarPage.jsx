@@ -293,14 +293,9 @@ export const CalendarPage = ({ setCurrentPage }) => {
               return <div key={`empty-${index}`} style={{ minHeight: '90px', background: '#fafafa', borderRadius: '8px' }} />;
             }
 
-            const isToday = (
-              day === today.getDate() &&
-              month === today.getMonth() &&
-              year === today.getFullYear()
-            );
-
             const isSelected = selectedDay === day;
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+            const isToday = dateStr === todayStr;
             const isPastDay = dateStr < todayStr;
             const isDayDisabled = !isAdmin && isPastDay;
 

@@ -2,7 +2,7 @@ import { BookingModel } from '../models/booking.model.js';
 import { BlockedSlotModel } from '../models/blockedSlot.model.js';
 import { UserModel } from '../models/user.model.js';
 import { sql } from '../config/db.js';
-import { hasSessionStarted, isSessionCompleted } from '../utils/timezone.js';
+import { hasSessionStarted, isSessionCompleted, getClubCurrentDateTime } from '../utils/timezone.js';
 
 const ALLOWED_SLOTS = [
   '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -85,7 +85,10 @@ export const getMyBookings = async (req, res, next) => {
 
 export const getUpcomingBookings = async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
+    let { startDate, endDate } = req.query;
+    if (!startDate) {
+      startDate = getClubCurrentDateTime().currentDateStr;
+    }
     const isAdmin = req.user.role === 'admin';
 
     if (isAdmin) {

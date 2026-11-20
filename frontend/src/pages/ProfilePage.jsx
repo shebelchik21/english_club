@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiRequest } from '../services/api.js';
-import { isSessionCompleted, hasSessionStarted } from '../utils/timezone.js';
+import { isSessionCompleted, hasSessionStarted, getClubCurrentDateTime } from '../utils/timezone.js';
 
 export const ProfilePage = ({ setCurrentPage }) => {
   const { user, token, logout, refreshUser } = useAuth();
@@ -17,9 +17,9 @@ export const ProfilePage = ({ setCurrentPage }) => {
     try {
       setLoadingBookings(true);
       if (isAdmin) {
-        const now = new Date();
-        const startDateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-        const endD = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6);
+        const clubNow = getClubCurrentDateTime();
+        const startDateStr = clubNow.currentDateStr;
+        const endD = new Date(clubNow.year, clubNow.month - 1, clubNow.day + 6);
         const endDateStr = `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`;
         const data = await apiRequest(`/bookings/upcoming?startDate=${startDateStr}&endDate=${endDateStr}`, 'GET', null, token);
         setLessons(data.bookings || []);
